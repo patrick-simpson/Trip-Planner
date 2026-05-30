@@ -53,6 +53,11 @@
    ============================================================ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* The [hidden] attribute must always win over display rules below
+   (e.g. .modal-overlay/.field-group use display:flex which would
+   otherwise override the attribute's implicit display:none). */
+[hidden] { display: none !important; }
+
 html { font-size: 16px; -webkit-font-smoothing: antialiased; }
 
 body {
