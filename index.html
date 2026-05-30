@@ -56,10 +56,11 @@
         <h2>Where are you headed?</h2>
 
         <div class="field-group">
-          <label for="destination">Destination</label>
-          <div class="input-wrap">
-            <input type="text" id="destination" placeholder="e.g. Grand Canyon, AZ" autocomplete="off" maxlength="120">
+          <label for="destination">Where are you going?</label>
+          <div class="autocomplete-wrapper">
+            <input type="text" id="destination" placeholder="Type a destination..." autocomplete="off" maxlength="120">
             <span class="valid-check" data-for="destination">✓</span>
+            <ul class="autocomplete-list" id="autocomplete-list" hidden></ul>
           </div>
           <p class="field-error" id="err-destination" aria-live="polite"></p>
         </div>
@@ -306,6 +307,7 @@
     </div>
   </div>
 
+  <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

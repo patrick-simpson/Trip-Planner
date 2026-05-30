@@ -10,6 +10,9 @@ const TRANSPORT_LABELS = { Car: '🚗 Car', Plane: '✈️ Plane', Train: '🚆 
 // Per-transport flat fare estimate ($ per mile) for non-car modes
 const FARE_PER_MILE = { Plane: 0.18, Train: 0.22 };
 
+// Keep a reference to destination-specific activities
+let currentActivities = {};
+
 // Rest stop: minutes of break added per this many hours of continuous driving
 const DRIVE_HOURS_PER_BREAK = 2.5;
 const BREAK_MINUTES = 20;
@@ -97,6 +100,40 @@ function toggleTheme() {
   const next = current === 'dark' ? 'light' : 'dark';
   applyTheme(next);
   localStorage.setItem('tripPlanner.theme', next);
+}
+
+/* ============================================================
+   AUTOCOMPLETE (Top 500 Destinations)
+   ============================================================ */
+
+function filterDestinations(query) {
+  if (!query) return [];
+  const lower = query.toLowerCase();
+  return DESTINATIONS.filter(d => d.toLowerCase().includes(lower)).slice(0, 12);
+}
+
+function renderAutocomplete(matches) {
+  const list = $('autocomplete-list');
+  while (list.firstChild) list.removeChild(list.firstChild);
+  if (matches.length === 0) { list.hidden = true; return; }
+  list.hidden = false;
+  matches.forEach(dest => {
+    const li = document.createElement('li');
+    li.className = 'autocomplete-item';
+    li.textContent = dest;
+    li.addEventListener('click', () => selectDestination(dest));
+    list.appendChild(li);
+  });
+}
+
+function selectDestination(dest) {
+  $('destination').value = dest;
+  $('autocomplete-list').hidden = true;
+  state.destination = dest;
+  currentActivities = getActivitiesForDestination(dest);
+  clearError('destination', 'err-destination');
+  markValid('destination', true);
+  updateNextButtonState();
 }
 
 /* ============================================================
@@ -228,6 +265,8 @@ function collectStep(n) {
     state.roundTrip = $('round-trip-toggle').checked;
     state.returnDate = $('return-date').value;
     state.tzOffset = parseInt($('dest-tz').value, 10) || 0;
+    // Load destination-specific activities
+    currentActivities = getActivitiesForDestination(state.destination);
   }
   if (n === 2) {
     state.transport = getCheckedTransport();
@@ -390,7 +429,7 @@ function renderSummary() {
    ============================================================ */
 
 function getFilteredActivities() {
-  let items = ACTIVITIES[activeCategory] || [];
+  let items = (currentActivities[activeCategory] || []);
   if (activeFilter !== 'all') items = items.filter(i => i.price === activeFilter);
   if (searchTerm) {
     const t = searchTerm.toLowerCase();
@@ -847,6 +886,7 @@ function flashFeedback(msg) {
 
 function hydrateForm() {
   $('destination').value = state.destination || '';
+  if (state.destination) currentActivities = getActivitiesForDestination(state.destination);
   $('miles').value = state.miles ?? '';
   $('departure-date').value = state.date || '';
   $('round-trip-toggle').checked = !!state.roundTrip;
@@ -1014,6 +1054,22 @@ function init() {
     const jump = () => goToStep(parseInt(row.dataset.editStep, 10));
     row.addEventListener('click', jump);
     row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jump(); } });
+  });
+
+  // Autocomplete for destination
+  $('destination').addEventListener('input', e => {
+    const query = e.target.value;
+    if (!query) { $('autocomplete-list').hidden = true; return; }
+    const matches = filterDestinations(query);
+    renderAutocomplete(matches);
+  });
+  $('destination').addEventListener('blur', () => {
+    setTimeout(() => $('autocomplete-list').hidden = true, 100);
+  });
+  $('autocomplete-list').addEventListener('click', e => {
+    if (e.target.classList.contains('autocomplete-item')) {
+      selectDestination(e.target.textContent);
+    }
   });
 
   // Live validation + valid checkmarks (Feature 15)
